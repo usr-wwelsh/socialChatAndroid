@@ -1,0 +1,75 @@
+package com.socialchat.app.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.VideoFile
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.socialchat.app.ui.theme.*
+
+@Composable
+fun PostMediaContent(
+    mediaType: String?,
+    mediaData: String?,
+    modifier: Modifier = Modifier
+) {
+    if (mediaType == null || mediaData == null) return
+
+    // Ensure image data has the data URI prefix that Base64Fetcher expects
+    val normalizedData = if (mediaType.startsWith("image") && !mediaData.startsWith("data:")) {
+        "data:image/jpeg;base64,$mediaData"
+    } else {
+        mediaData
+    }
+
+    when {
+        mediaType.startsWith("image") -> {
+            AsyncImage(
+                model = normalizedData,
+                contentDescription = "Post image",
+                contentScale = ContentScale.FillWidth,
+                modifier = modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+                    .border(2.dp, Border, RectangleShape)
+            )
+        }
+        mediaType.startsWith("video") -> {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .background(SecondaryBg)
+                    .border(2.dp, Border, RectangleShape)
+            ) {
+                Icon(Icons.Default.VideoFile, contentDescription = "Video", tint = Accent, modifier = Modifier.size(48.dp))
+                Text("Video attachment", color = TextSecondary, modifier = Modifier.padding(top = 60.dp))
+            }
+        }
+        mediaType.startsWith("audio") -> {
+            Surface(
+                color = SecondaryBg,
+                shape = RectangleShape,
+                modifier = modifier
+                    .fillMaxWidth()
+                    .border(2.dp, Border, RectangleShape)
+                    .padding(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Icon(Icons.Default.AudioFile, contentDescription = "Audio", tint = Accent)
+                    Text("Audio attachment", color = TextSecondary)
+                }
+            }
+        }
+    }
+}

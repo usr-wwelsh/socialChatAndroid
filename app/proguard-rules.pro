@@ -1,0 +1,3 @@
+-keep class com.socialchat.app.data.** { *; }
+-keep class io.socket.** { *; }
+-dontwarn io.socket.**

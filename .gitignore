@@ -1,0 +1,33 @@
+# Build outputs
+*.apk
+*.aab
+*.dex
+build/
+app/build/
+
+# Local configuration
+local.properties
+*.keystore
+*.jks
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Gradle
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# Generated
+gen/
+generated/
+app/src/main/assets/webkit/
+
+# Logs & crash reports
+*.log
+hs_err_pid*
+replay_pid*
