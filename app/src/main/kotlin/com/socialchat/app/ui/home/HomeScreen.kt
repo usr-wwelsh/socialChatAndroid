@@ -19,7 +19,9 @@ fun HomeScreen(
     onNavigateToProfile: (String) -> Unit,
     viewModel: HomeViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val posts by viewModel.posts.collectAsState()
+    val feedState by viewModel.feedState.collectAsState()
+    val detailState by viewModel.detailState.collectAsState()
     val listState = rememberLazyListState()
 
     // Infinite scroll trigger
@@ -32,7 +34,7 @@ fun HomeScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         SwipeRefresh(
-            state = rememberSwipeRefreshState(uiState.isRefreshing),
+            state = rememberSwipeRefreshState(feedState.isRefreshing),
             onRefresh = { viewModel.loadFeed(refresh = true) }
         ) {
             LazyColumn(
@@ -41,14 +43,11 @@ fun HomeScreen(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                if (uiState.error != null && uiState.posts.isEmpty()) {
-                    item { ErrorBanner(uiState.error!!, modifier = Modifier.padding(16.dp)) }
+                if (feedState.error != null && posts.isEmpty()) {
+                    item { ErrorBanner(feedState.error!!, modifier = Modifier.padding(16.dp)) }
                 }
 
-                itemsIndexed(uiState.posts, key = { _, post -> post.id }) { index, post ->
-                    LaunchedEffect(post.id) {
-                        viewModel.loadPostMedia(post)
-                    }
+                itemsIndexed(posts, key = { _, post -> post.id }) { _, post ->
                     PostCard(
                         post = post,
                         onLikeClick = { viewModel.toggleLike(it) },
@@ -58,10 +57,10 @@ fun HomeScreen(
                     )
                 }
 
-                if (uiState.isLoading && uiState.posts.isNotEmpty()) {
+                if (feedState.isLoading && posts.isNotEmpty()) {
                     item { LoadingSpinner() }
                 }
-                if (!uiState.hasMore && uiState.posts.isNotEmpty()) {
+                if (!feedState.hasMore && posts.isNotEmpty()) {
                     item {
                         Text(
                             "You're all caught up",
@@ -74,19 +73,19 @@ fun HomeScreen(
             }
         }
 
-        if (uiState.isLoading && uiState.posts.isEmpty()) {
+        if (feedState.isLoading && posts.isEmpty()) {
             LoadingSpinner(modifier = Modifier.fillMaxSize())
         }
     }
 
     // Post detail bottom sheet
-    uiState.selectedPost?.let { post ->
+    detailState.selectedPost?.let { post ->
         PostDetailSheet(
             post = post,
-            comments = uiState.comments,
-            commentsLoading = uiState.commentsLoading,
-            commentsError = uiState.commentsError,
-            commentInput = uiState.commentInput,
+            comments = detailState.comments,
+            commentsLoading = detailState.commentsLoading,
+            commentsError = detailState.commentsError,
+            commentInput = detailState.commentInput,
             onCommentInputChange = { viewModel.updateCommentInput(it) },
             onSubmitComment = { viewModel.submitComment() },
             onDismiss = { viewModel.closePostDetail() },

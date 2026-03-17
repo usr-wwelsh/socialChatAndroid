@@ -12,15 +12,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import javax.inject.Inject
 
-data class HomeUiState(
-    val posts: List<Post> = emptyList(),
+data class FeedState(
     val isLoading: Boolean = false,
     val isRefreshing: Boolean = false,
-    val error: String? = null,
-    val currentPage: Int = 1,
     val hasMore: Boolean = true,
+    val error: String? = null,
+    val currentPage: Int = 1
+)
+
+data class PostDetailState(
     val selectedPost: Post? = null,
     val comments: List<Comment> = emptyList(),
     val commentsLoading: Boolean = false,
@@ -33,8 +37,14 @@ class HomeViewModel @Inject constructor(
     private val repository: PostRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(HomeUiState())
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private val _posts = MutableStateFlow<List<Post>>(emptyList())
+    val posts: StateFlow<List<Post>> = _posts.asStateFlow()
+
+    private val _feedState = MutableStateFlow(FeedState())
+    val feedState: StateFlow<FeedState> = _feedState.asStateFlow()
+
+    private val _detailState = MutableStateFlow(PostDetailState())
+    val detailState: StateFlow<PostDetailState> = _detailState.asStateFlow()
 
     private val loadingMediaIds = mutableSetOf<Int>()
 
@@ -43,96 +53,115 @@ class HomeViewModel @Inject constructor(
     }
 
     fun loadFeed(refresh: Boolean = false) {
-        if (_uiState.value.isLoading) return
-        val page = if (refresh) 1 else _uiState.value.currentPage
+        if (_feedState.value.isLoading) return
+        val page = if (refresh) 1 else _feedState.value.currentPage
 
         viewModelScope.launch {
-            _uiState.update {
+            _feedState.update {
                 if (refresh) it.copy(isRefreshing = true, error = null)
                 else it.copy(isLoading = page == 1, error = null)
             }
-            when (val result = repository.getFeed(page)) {
+            when (val result = repository.getFeed(page, refresh = refresh)) {
                 is NetworkResult.Success -> {
                     val newPosts = result.data.posts ?: emptyList()
-                    _uiState.update {
+                    _posts.update { current ->
+                        if (refresh || page == 1) newPosts else current + newPosts
+                    }
+                    _feedState.update {
                         it.copy(
-                            posts = if (refresh || page == 1) newPosts else it.posts + newPosts,
                             isLoading = false,
                             isRefreshing = false,
                             currentPage = page + 1,
                             hasMore = result.data.hasMore || newPosts.size >= 20
                         )
                     }
+                    batchLoadMedia(newPosts)
                 }
                 is NetworkResult.Error -> {
-                    _uiState.update { it.copy(isLoading = false, isRefreshing = false, error = result.message) }
+                    _feedState.update { it.copy(isLoading = false, isRefreshing = false, error = result.message) }
                 }
                 else -> {}
             }
         }
     }
 
+    private fun batchLoadMedia(newPosts: List<Post>) {
+        val postsNeedingMedia = newPosts.filter { it.mediaType != null && it.mediaData == null }
+        if (postsNeedingMedia.isEmpty()) return
+        val semaphore = Semaphore(5)
+        viewModelScope.launch {
+            postsNeedingMedia.forEach { post ->
+                launch {
+                    semaphore.withPermit { loadPostMedia(post) }
+                }
+            }
+        }
+    }
+
     fun loadMoreIfNeeded(lastVisibleIndex: Int) {
-        val state = _uiState.value
-        if (!state.isLoading && state.hasMore && lastVisibleIndex >= state.posts.size - 3) {
+        val state = _feedState.value
+        if (!state.isLoading && state.hasMore && lastVisibleIndex >= _posts.value.size - 3) {
             loadFeed()
         }
     }
 
-    fun loadPostMedia(post: Post) {
+    private suspend fun loadPostMedia(post: Post) {
         if (post.mediaData != null || post.mediaType == null) return
         if (loadingMediaIds.contains(post.id)) return
         loadingMediaIds.add(post.id)
 
-        viewModelScope.launch {
-            when (val result = repository.getPostMedia(post.id)) {
-                is NetworkResult.Success -> {
-                    _uiState.update { state ->
-                        state.copy(
-                            posts = state.posts.map { p ->
-                                if (p.id == post.id) p.copy(
-                                    mediaData = result.data.mediaData,
-                                    mediaType = result.data.mediaType
-                                ) else p
-                            }
-                        )
+        when (val result = repository.getPostMedia(post.id)) {
+            is NetworkResult.Success -> {
+                val mediaData = result.data.mediaData
+                val mediaType = result.data.mediaType
+                _posts.update { posts ->
+                    posts.map { p ->
+                        if (p.id == post.id) p.copy(mediaData = mediaData, mediaType = mediaType) else p
                     }
                 }
-                else -> { loadingMediaIds.remove(post.id) }
+                repository.updateCachedPost(post.id) { p ->
+                    p.copy(mediaData = mediaData, mediaType = mediaType)
+                }
             }
+            else -> loadingMediaIds.remove(post.id)
         }
     }
 
     fun toggleLike(post: Post) {
         viewModelScope.launch {
-            // Optimistic update
-            _uiState.update { state ->
-                state.copy(posts = state.posts.map { p ->
-                    if (p.id == post.id) p.copy(
-                        isLiked = !p.isLiked,
-                        likeCount = if (p.isLiked) p.likeCount - 1 else p.likeCount + 1
-                    ) else p
-                })
+            val updated = post.copy(
+                isLiked = !post.isLiked,
+                likeCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1
+            )
+            _posts.update { posts -> posts.map { if (it.id == post.id) updated else it } }
+            _detailState.update { state ->
+                if (state.selectedPost?.id == post.id) state.copy(selectedPost = updated) else state
             }
             repository.toggleLike(post.id, post.isLiked)
         }
     }
 
     fun openPostDetail(post: Post) {
-        _uiState.update { it.copy(selectedPost = post, comments = post.previewComments ?: emptyList(), commentsError = null) }
+        _detailState.update {
+            it.copy(selectedPost = post, comments = post.previewComments ?: emptyList(), commentsError = null)
+        }
         loadComments(post.id)
     }
 
     fun closePostDetail() {
-        _uiState.update { it.copy(selectedPost = null, comments = emptyList(), commentInput = "", commentsError = null) }
+        _detailState.update {
+            it.copy(selectedPost = null, comments = emptyList(), commentInput = "", commentsError = null)
+        }
     }
 
     private fun loadComments(postId: Int) {
         viewModelScope.launch {
-            _uiState.update { it.copy(commentsLoading = true, commentsError = null) }
+            _detailState.update { it.copy(commentsLoading = true, commentsError = null) }
             when (val result = repository.getComments(postId)) {
-                is NetworkResult.Success -> _uiState.update { it.copy(comments = result.data, commentsLoading = false) }
-                is NetworkResult.Error -> _uiState.update { state ->
+                is NetworkResult.Success -> _detailState.update {
+                    it.copy(comments = result.data, commentsLoading = false)
+                }
+                is NetworkResult.Error -> _detailState.update { state ->
                     state.copy(
                         commentsLoading = false,
                         commentsError = if (state.comments.isEmpty()) result.message else null
@@ -144,25 +173,24 @@ class HomeViewModel @Inject constructor(
     }
 
     fun updateCommentInput(text: String) {
-        _uiState.update { it.copy(commentInput = text) }
+        _detailState.update { it.copy(commentInput = text) }
     }
 
     fun submitComment() {
-        val state = _uiState.value
-        val postId = state.selectedPost?.id ?: return
-        val content = state.commentInput.trim()
+        val detail = _detailState.value
+        val postId = detail.selectedPost?.id ?: return
+        val content = detail.commentInput.trim()
         if (content.isEmpty()) return
 
         viewModelScope.launch {
-            _uiState.update { it.copy(commentInput = "") }
+            _detailState.update { it.copy(commentInput = "") }
             when (val result = repository.addComment(postId, content)) {
                 is NetworkResult.Success -> {
-                    _uiState.update { it.copy(comments = it.comments + result.data) }
-                    // Update comment count in feed
-                    _uiState.update { state2 ->
-                        state2.copy(posts = state2.posts.map { p ->
+                    _detailState.update { it.copy(comments = it.comments + result.data) }
+                    _posts.update { posts ->
+                        posts.map { p ->
                             if (p.id == postId) p.copy(commentCount = p.commentCount + 1) else p
-                        })
+                        }
                     }
                 }
                 else -> {}

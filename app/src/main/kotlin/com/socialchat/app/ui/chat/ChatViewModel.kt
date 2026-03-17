@@ -122,6 +122,8 @@ class ChatViewModel @Inject constructor(
     private fun collectSocketEvents() {
         viewModelScope.launch {
             socketManager.newMessages.collect { msg ->
+                repository.appendCachedMessage(msg.roomId, msg)
+                repository.updateRoomLastMessage(msg.roomId, msg)
                 if (msg.roomId == currentRoomId) {
                     _roomState.update { it.copy(messages = it.messages + msg) }
                 }

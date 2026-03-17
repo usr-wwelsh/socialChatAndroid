@@ -16,7 +16,7 @@ class RetrofitProvider @Inject constructor(
     @Volatile private var currentBaseUrl: String = ""
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = HttpLoggingInterceptor.Level.BASIC
     }
 
     fun getRetrofit(baseUrl: String): Retrofit {
@@ -27,8 +27,8 @@ class RetrofitProvider @Inject constructor(
                     val client = OkHttpClient.Builder()
                         .cookieJar(cookieJar)
                         .addInterceptor(loggingInterceptor)
-                        .connectTimeout(30, TimeUnit.SECONDS)
-                        .readTimeout(30, TimeUnit.SECONDS)
+                        .connectTimeout(15, TimeUnit.SECONDS)
+                        .readTimeout(20, TimeUnit.SECONDS)
                         .build()
 
                     retrofit = Retrofit.Builder()

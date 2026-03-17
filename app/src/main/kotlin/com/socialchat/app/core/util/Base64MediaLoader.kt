@@ -1,6 +1,7 @@
 package com.socialchat.app.core.util
 
 import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.util.Base64
 import coil.ImageLoader
@@ -8,8 +9,8 @@ import coil.decode.DataSource
 import coil.fetch.DrawableResult
 import coil.fetch.FetchResult
 import coil.fetch.Fetcher
+import coil.key.Keyer
 import coil.request.Options
-import android.graphics.drawable.BitmapDrawable
 
 class Base64Fetcher(private val data: String, private val options: Options) : Fetcher {
     override suspend fun fetch(): FetchResult {
@@ -32,5 +33,13 @@ class Base64Fetcher(private val data: String, private val options: Options) : Fe
             if (!ssp.startsWith("image/")) return null
             return Base64Fetcher(data.toString(), options)
         }
+    }
+}
+
+class Base64Keyer : Keyer<Uri> {
+    override fun key(data: Uri, options: Options): String? {
+        if (data.scheme != "data") return null
+        val str = data.toString()
+        return "base64:${str.take(64).hashCode()}:${str.length}"
     }
 }

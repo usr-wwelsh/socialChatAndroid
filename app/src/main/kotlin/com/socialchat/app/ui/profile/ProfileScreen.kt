@@ -5,10 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PeopleAlt
@@ -18,12 +16,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.socialchat.app.ui.components.*
 import com.socialchat.app.ui.theme.*
 
@@ -36,12 +32,23 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val listState = rememberLazyListState()
+
+    // Infinite scroll trigger
+    val lastVisibleIndex by remember {
+        derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+    }
+    LaunchedEffect(lastVisibleIndex) {
+        if (uiState.hasMore && lastVisibleIndex >= uiState.posts.size - 3) {
+            viewModel.loadMorePosts()
+        }
+    }
 
     LaunchedEffect(Unit) { viewModel.loadMyProfile() }
 
     if (uiState.isLoading) { LoadingSpinner(Modifier.fillMaxSize()); return }
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
         item {
             // Header
             Column(
@@ -150,6 +157,10 @@ fun ProfileScreen(
                 onUsernameClick = {},
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
             )
+        }
+
+        if (uiState.hasMore) {
+            item { LoadingSpinner() }
         }
     }
 }

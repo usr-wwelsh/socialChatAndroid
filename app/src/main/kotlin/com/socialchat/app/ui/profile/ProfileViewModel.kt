@@ -29,7 +29,10 @@ data class ProfileUiState(
     val isUpdating: Boolean = false,
     val updateSuccess: Boolean = false,
     val editBio: String = "",
-    val editAvatarData: String? = null
+    val editAvatarData: String? = null,
+    val currentPage: Int = 1,
+    val hasMore: Boolean = false,
+    val isLoadingMore: Boolean = false
 )
 
 @HiltViewModel
@@ -41,6 +44,34 @@ class ProfileViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ProfileUiState())
     val uiState: StateFlow<ProfileUiState> = _uiState.asStateFlow()
 
+    private var allPosts: List<Post> = emptyList()
+    private val pageSize = 10
+
+    private fun setAllPosts(posts: List<Post>) {
+        allPosts = posts
+        _uiState.update {
+            it.copy(
+                posts = posts.take(pageSize),
+                currentPage = 1,
+                hasMore = posts.size > pageSize
+            )
+        }
+    }
+
+    fun loadMorePosts() {
+        val state = _uiState.value
+        if (state.isLoadingMore || !state.hasMore) return
+        val nextPage = state.currentPage + 1
+        val newDisplayed = allPosts.take(nextPage * pageSize)
+        _uiState.update {
+            it.copy(
+                posts = newDisplayed,
+                currentPage = nextPage,
+                hasMore = newDisplayed.size < allPosts.size
+            )
+        }
+    }
+
     fun loadMyProfile() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
@@ -50,11 +81,11 @@ class ProfileViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             user = user,
-                            posts = result.data.posts ?: emptyList(),
                             isLoading = false,
                             editBio = user.bio ?: ""
                         )
                     }
+                    setAllPosts(result.data.posts ?: emptyList())
                     // Load friends in background after profile is shown
                     when (val friendsResult = friendRepository.getUserFriends(user.id)) {
                         is NetworkResult.Success -> _uiState.update { it.copy(friends = friendsResult.data) }
@@ -73,14 +104,8 @@ class ProfileViewModel @Inject constructor(
             when (val result = profileRepository.getUserProfile(username)) {
                 is NetworkResult.Success -> {
                     val user = result.data.user
-                    // Show profile immediately
-                    _uiState.update {
-                        it.copy(
-                            user = user,
-                            posts = result.data.posts ?: emptyList(),
-                            isLoading = false
-                        )
-                    }
+                    _uiState.update { it.copy(user = user, isLoading = false) }
+                    setAllPosts(result.data.posts ?: emptyList())
                     // Load friends and friendship status in parallel
                     val friendsDeferred = async { friendRepository.getUserFriends(user.id) }
                     val statusDeferred = async { friendRepository.getFriendStatus(user.id) }
