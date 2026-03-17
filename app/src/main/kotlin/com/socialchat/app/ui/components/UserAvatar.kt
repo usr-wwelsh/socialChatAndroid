@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.socialchat.app.core.util.LocalBaseUrl
 import com.socialchat.app.ui.theme.*
 
 @Composable
@@ -24,10 +25,11 @@ fun UserAvatar(
     size: Dp = 40.dp,
     modifier: Modifier = Modifier
 ) {
-    val imageModel = if (!profilePicture.isNullOrEmpty() && !profilePicture.startsWith("data:")) {
-        "data:image/jpeg;base64,$profilePicture"
+    val baseUrl = LocalBaseUrl.current
+    val imageModel = if (!profilePicture.isNullOrEmpty()) {
+        if (profilePicture.startsWith("http")) profilePicture else "$baseUrl$profilePicture"
     } else {
-        profilePicture
+        null
     }
 
     if (!imageModel.isNullOrEmpty()) {

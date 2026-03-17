@@ -14,27 +14,24 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.socialchat.app.core.util.LocalBaseUrl
 import com.socialchat.app.ui.theme.*
 
 @Composable
 fun PostMediaContent(
     mediaType: String?,
-    mediaData: String?,
+    mediaUrl: String?,
     modifier: Modifier = Modifier
 ) {
-    if (mediaType == null || mediaData == null) return
+    if (mediaType == null || mediaUrl == null) return
 
-    // Ensure image data has the data URI prefix that Base64Fetcher expects
-    val normalizedData = if (mediaType.startsWith("image") && !mediaData.startsWith("data:")) {
-        "data:image/jpeg;base64,$mediaData"
-    } else {
-        mediaData
-    }
+    val baseUrl = LocalBaseUrl.current
+    val fullUrl = if (mediaUrl.startsWith("http")) mediaUrl else "$baseUrl$mediaUrl"
 
     when {
         mediaType.startsWith("image") -> {
             AsyncImage(
-                model = normalizedData,
+                model = fullUrl,
                 contentDescription = "Post image",
                 contentScale = ContentScale.FillWidth,
                 modifier = modifier

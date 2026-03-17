@@ -27,7 +27,7 @@ data class FeedResponse(
 
 data class MediaResponse(
     @SerializedName("media_type") val mediaType: String,
-    @SerializedName("media_data") val mediaData: String
+    @SerializedName("media_url") val mediaUrl: String
 )
 
 data class CommentsResponse(

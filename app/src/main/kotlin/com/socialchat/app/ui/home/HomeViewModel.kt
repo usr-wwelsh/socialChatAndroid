@@ -86,7 +86,7 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun batchLoadMedia(newPosts: List<Post>) {
-        val postsNeedingMedia = newPosts.filter { it.mediaType != null && it.mediaData == null }
+        val postsNeedingMedia = newPosts.filter { it.mediaType != null && it.mediaUrl == null }
         if (postsNeedingMedia.isEmpty()) return
         val semaphore = Semaphore(5)
         viewModelScope.launch {
@@ -106,21 +106,21 @@ class HomeViewModel @Inject constructor(
     }
 
     private suspend fun loadPostMedia(post: Post) {
-        if (post.mediaData != null || post.mediaType == null) return
+        if (post.mediaUrl != null || post.mediaType == null) return
         if (loadingMediaIds.contains(post.id)) return
         loadingMediaIds.add(post.id)
 
         when (val result = repository.getPostMedia(post.id)) {
             is NetworkResult.Success -> {
-                val mediaData = result.data.mediaData
+                val mediaUrl = result.data.mediaUrl
                 val mediaType = result.data.mediaType
                 _posts.update { posts ->
                     posts.map { p ->
-                        if (p.id == post.id) p.copy(mediaData = mediaData, mediaType = mediaType) else p
+                        if (p.id == post.id) p.copy(mediaUrl = mediaUrl, mediaType = mediaType) else p
                     }
                 }
                 repository.updateCachedPost(post.id) { p ->
-                    p.copy(mediaData = mediaData, mediaType = mediaType)
+                    p.copy(mediaUrl = mediaUrl, mediaType = mediaType)
                 }
             }
             else -> loadingMediaIds.remove(post.id)

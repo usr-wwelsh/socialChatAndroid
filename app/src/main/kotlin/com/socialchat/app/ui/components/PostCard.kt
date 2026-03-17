@@ -100,7 +100,7 @@ fun PostCard(
             // Media
             PostMediaContent(
                 mediaType = post.mediaType,
-                mediaData = post.mediaData
+                mediaUrl = post.mediaUrl
             )
 
             // Tags
