@@ -8,7 +8,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalUriHandler
@@ -28,6 +28,12 @@ fun PostCard(
     onUsernameClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var fullscreenMedia by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    fullscreenMedia?.let { (url, type) ->
+        FullscreenMediaViewer(url = url, mediaType = type, onDismiss = { fullscreenMedia = null })
+    }
+
     Surface(
         color = CardBg,
         shape = RectangleShape,
@@ -100,7 +106,8 @@ fun PostCard(
             // Media
             PostMediaContent(
                 mediaType = post.mediaType,
-                mediaUrl = post.mediaUrl
+                mediaUrl = post.mediaUrl,
+                onMediaClick = { url, type -> fullscreenMedia = url to type }
             )
 
             // Tags

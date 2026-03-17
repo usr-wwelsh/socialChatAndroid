@@ -1,5 +1,10 @@
 package com.socialchat.app.core.network
 
+import com.google.gson.GsonBuilder
+import com.google.gson.TypeAdapter
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonToken
+import com.google.gson.stream.JsonWriter
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -31,10 +36,26 @@ class RetrofitProvider @Inject constructor(
                         .readTimeout(20, TimeUnit.SECONDS)
                         .build()
 
+                    val gson = GsonBuilder()
+                        .registerTypeAdapter(Boolean::class.java, object : TypeAdapter<Boolean>() {
+                            override fun write(out: JsonWriter, value: Boolean?) {
+                                if (value == null) out.nullValue() else out.value(value)
+                            }
+                            override fun read(reader: JsonReader): Boolean {
+                                return when (reader.peek()) {
+                                    JsonToken.BOOLEAN -> reader.nextBoolean()
+                                    JsonToken.NUMBER -> reader.nextInt() != 0
+                                    JsonToken.NULL -> { reader.nextNull(); false }
+                                    else -> reader.nextString().toBoolean()
+                                }
+                            }
+                        })
+                        .create()
+
                     retrofit = Retrofit.Builder()
                         .baseUrl(normalizedUrl)
                         .client(client)
-                        .addConverterFactory(GsonConverterFactory.create())
+                        .addConverterFactory(GsonConverterFactory.create(gson))
                         .build()
                     currentBaseUrl = normalizedUrl
                 }

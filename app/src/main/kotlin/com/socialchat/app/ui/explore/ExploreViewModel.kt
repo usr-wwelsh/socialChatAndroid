@@ -6,6 +6,7 @@ import com.socialchat.app.core.network.NetworkResult
 import com.socialchat.app.data.model.Post
 import com.socialchat.app.data.model.Tag
 import com.socialchat.app.data.model.User
+import com.socialchat.app.data.repository.PostRepository
 import com.socialchat.app.data.repository.TagRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -28,7 +29,8 @@ data class ExploreUiState(
 
 @HiltViewModel
 class ExploreViewModel @Inject constructor(
-    private val tagRepository: TagRepository
+    private val tagRepository: TagRepository,
+    private val postRepository: PostRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ExploreUiState())
@@ -72,6 +74,20 @@ class ExploreViewModel @Inject constructor(
                     is NetworkResult.Error -> _uiState.update { it.copy(error = result.message, isLoading = false) }
                     else -> {}
                 }
+            }
+        }
+    }
+
+    fun toggleLike(post: Post) {
+        viewModelScope.launch {
+            val updated = post.copy(
+                isLiked = !post.isLiked,
+                likeCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1
+            )
+            _uiState.update { it.copy(postResults = it.postResults.map { p -> if (p.id == post.id) updated else p }) }
+            val result = postRepository.toggleLike(post.id, post.isLiked)
+            if (result is NetworkResult.Error) {
+                _uiState.update { it.copy(postResults = it.postResults.map { p -> if (p.id == post.id) post else p }) }
             }
         }
     }

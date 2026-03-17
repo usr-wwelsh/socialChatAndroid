@@ -89,7 +89,7 @@ fun ExploreScreen(
                 items(uiState.postResults, key = { it.id }) { post ->
                     PostCard(
                         post = post,
-                        onLikeClick = {},
+                        onLikeClick = viewModel::toggleLike,
                         onCommentClick = {},
                         onUsernameClick = onNavigateToProfile
                     )

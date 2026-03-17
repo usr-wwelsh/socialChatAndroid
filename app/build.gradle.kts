@@ -65,6 +65,7 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.coil.base)
+    implementation(libs.coil.gif)
 
     implementation(libs.socketio) {
         exclude(group = "org.json", module = "json")

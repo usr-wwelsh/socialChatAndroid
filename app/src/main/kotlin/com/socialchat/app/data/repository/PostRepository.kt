@@ -6,6 +6,7 @@ import com.socialchat.app.core.network.safeApiCall
 import com.socialchat.app.data.api.PostApiService
 import com.socialchat.app.data.dto.CreateCommentRequest
 import com.socialchat.app.data.dto.CreatePostRequest
+import com.socialchat.app.data.dto.ReactRequest
 import com.socialchat.app.data.dto.FeedResponse
 import com.socialchat.app.data.dto.MediaResponse
 import com.socialchat.app.data.model.Comment
@@ -79,8 +80,8 @@ class PostRepository @Inject constructor(
 
     suspend fun toggleLike(id: Int, isLiked: Boolean): NetworkResult<Unit> {
         val result = safeApiCall {
-            if (isLiked) api.unlikePost(id) else api.likePost(id)
-            Unit
+            val resp = if (isLiked) api.unlikePost(id) else api.likePost(id, ReactRequest("like"))
+            if (!resp.isSuccessful) throw retrofit2.HttpException(resp)
         }
         if (result is NetworkResult.Success) {
             cachedFeed = cachedFeed?.map { p ->

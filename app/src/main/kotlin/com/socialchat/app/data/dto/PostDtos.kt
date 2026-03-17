@@ -34,6 +34,10 @@ data class CommentsResponse(
     val comments: List<Comment> = emptyList()
 )
 
+data class ReactRequest(
+    @SerializedName("reaction_type") val reactionType: String
+)
+
 data class CreateCommentRequest(
     @SerializedName("post_id") val postId: Int,
     val content: String

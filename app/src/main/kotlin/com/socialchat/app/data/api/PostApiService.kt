@@ -2,6 +2,7 @@ package com.socialchat.app.data.api
 
 import com.socialchat.app.data.dto.CommentsResponse
 import com.socialchat.app.data.dto.CreateCommentRequest
+import com.socialchat.app.data.dto.ReactRequest
 import com.socialchat.app.data.dto.CreateCommentResponse
 import com.socialchat.app.data.dto.CreatePostRequest
 import com.socialchat.app.data.dto.EditPostRequest
@@ -33,10 +34,10 @@ interface PostApiService {
     @DELETE("api/posts/{id}")
     suspend fun deletePost(@Path("id") id: Int): Response<Unit>
 
-    @POST("api/posts/{id}/like")
-    suspend fun likePost(@Path("id") id: Int): Response<Unit>
+    @POST("api/posts/{id}/react")
+    suspend fun likePost(@Path("id") id: Int, @Body body: ReactRequest = ReactRequest("like")): Response<Unit>
 
-    @DELETE("api/posts/{id}/like")
+    @DELETE("api/posts/{id}/react/like")
     suspend fun unlikePost(@Path("id") id: Int): Response<Unit>
 
     @GET("api/comments/post/{id}")

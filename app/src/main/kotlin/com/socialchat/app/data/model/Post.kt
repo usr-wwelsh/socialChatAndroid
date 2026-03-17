@@ -12,7 +12,7 @@ data class Post(
     @SerializedName("media_url") val mediaUrl: String? = null,
     val visibility: String? = null,
     @SerializedName("created_at") val createdAt: String? = null,
-    @SerializedName("like_count") val likeCount: Int = 0,
+    @SerializedName("reaction_count") val likeCount: Int = 0,
     @SerializedName("comment_count") val commentCount: Int = 0,
     @SerializedName("is_liked") val isLiked: Boolean = false,
     val tags: List<Tag>? = null,

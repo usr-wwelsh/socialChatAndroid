@@ -137,7 +137,14 @@ class HomeViewModel @Inject constructor(
             _detailState.update { state ->
                 if (state.selectedPost?.id == post.id) state.copy(selectedPost = updated) else state
             }
-            repository.toggleLike(post.id, post.isLiked)
+            val result = repository.toggleLike(post.id, post.isLiked)
+            if (result is NetworkResult.Error) {
+                // Revert optimistic update on failure
+                _posts.update { posts -> posts.map { if (it.id == post.id) post else it } }
+                _detailState.update { state ->
+                    if (state.selectedPost?.id == post.id) state.copy(selectedPost = post) else state
+                }
+            }
         }
     }
 

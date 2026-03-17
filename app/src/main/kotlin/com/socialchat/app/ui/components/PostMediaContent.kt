@@ -2,9 +2,11 @@ package com.socialchat.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AudioFile
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -21,7 +23,8 @@ import com.socialchat.app.ui.theme.*
 fun PostMediaContent(
     mediaType: String?,
     mediaUrl: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onMediaClick: ((url: String, type: String) -> Unit)? = null
 ) {
     if (mediaType == null || mediaUrl == null) return
 
@@ -38,6 +41,10 @@ fun PostMediaContent(
                     .fillMaxWidth()
                     .heightIn(max = 400.dp)
                     .border(2.dp, Border, RectangleShape)
+                    .then(
+                        if (onMediaClick != null) Modifier.clickable { onMediaClick(fullUrl, mediaType) }
+                        else Modifier
+                    )
             )
         }
         mediaType.startsWith("video") -> {
@@ -48,9 +55,12 @@ fun PostMediaContent(
                     .height(200.dp)
                     .background(SecondaryBg)
                     .border(2.dp, Border, RectangleShape)
+                    .then(
+                        if (onMediaClick != null) Modifier.clickable { onMediaClick(fullUrl, mediaType) }
+                        else Modifier
+                    )
             ) {
-                Icon(Icons.Default.VideoFile, contentDescription = "Video", tint = Accent, modifier = Modifier.size(48.dp))
-                Text("Video attachment", color = TextSecondary, modifier = Modifier.padding(top = 60.dp))
+                Icon(Icons.Default.PlayCircle, contentDescription = "Play video", tint = Accent, modifier = Modifier.size(64.dp))
             }
         }
         mediaType.startsWith("audio") -> {
