@@ -52,6 +52,14 @@ class PostRepository @Inject constructor(
         return result
     }
 
+    suspend fun getMediaFeed(page: Int = 1, limit: Int = 30): NetworkResult<FeedResponse> =
+        safeApiCall {
+            val offset = (page - 1) * limit
+            val resp = api.getMediaFeed(offset, limit)
+            if (!resp.isSuccessful) throw retrofit2.HttpException(resp)
+            resp.body()!!
+        }
+
     fun updateCachedPost(id: Int, transform: (Post) -> Post) {
         cachedFeed = cachedFeed?.map { if (it.id == id) transform(it) else it }
     }

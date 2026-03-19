@@ -66,6 +66,10 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.base)
     implementation(libs.coil.gif)
+    implementation(libs.coil.video)
+
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
 
     implementation(libs.socketio) {
         exclude(group = "org.json", module = "json")

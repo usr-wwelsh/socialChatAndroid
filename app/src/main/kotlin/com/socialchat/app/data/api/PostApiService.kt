@@ -21,6 +21,12 @@ interface PostApiService {
         @Query("limit") limit: Int = 20
     ): Response<FeedResponse>
 
+    @GET("api/posts/media")
+    suspend fun getMediaFeed(
+        @Query("offset") offset: Int = 0,
+        @Query("limit") limit: Int = 30
+    ): Response<FeedResponse>
+
     @GET("api/posts/{id}")
     suspend fun getPost(@Path("id") id: Int): Response<Post>
 

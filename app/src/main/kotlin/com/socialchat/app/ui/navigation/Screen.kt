@@ -20,4 +20,7 @@ sealed class Screen(val route: String) {
     object DmConversation : Screen("dm_conversation/{conversationId}") {
         fun createRoute(conversationId: Int) = "dm_conversation/$conversationId"
     }
+    object MediaReel : Screen("media_reel/{startIndex}") {
+        fun createRoute(startIndex: Int) = "media_reel/$startIndex"
+    }
 }

@@ -5,6 +5,7 @@ import android.net.Uri
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.decode.GifDecoder
+import coil.decode.VideoFrameDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
@@ -18,6 +19,7 @@ class SocialChatApp : Application(), ImageLoaderFactory {
         return ImageLoader.Builder(this)
             .components {
                 add(GifDecoder.Factory())
+                add(VideoFrameDecoder.Factory())
                 add(Base64Fetcher.Factory(), Uri::class.java)
                 add(Base64Keyer())
             }

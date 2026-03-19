@@ -24,7 +24,11 @@ data class ExploreUiState(
     val postResults: List<Post> = emptyList(),
     val userResults: List<User> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val mediaPosts: List<Post> = emptyList(),
+    val isLoadingMedia: Boolean = false,
+    val hasMoreMedia: Boolean = true,
+    val mediaPage: Int = 1
 )
 
 @HiltViewModel
@@ -40,6 +44,7 @@ class ExploreViewModel @Inject constructor(
 
     init {
         loadTrendingTags()
+        loadMediaPosts()
     }
 
     private fun loadTrendingTags() {
@@ -48,6 +53,35 @@ class ExploreViewModel @Inject constructor(
                 is NetworkResult.Success -> _uiState.update { it.copy(trendingTags = result.data) }
                 else -> {}
             }
+        }
+    }
+
+    private fun loadMediaPosts() {
+        val state = _uiState.value
+        if (state.isLoadingMedia || !state.hasMoreMedia) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingMedia = true) }
+            when (val result = postRepository.getMediaFeed(state.mediaPage)) {
+                is NetworkResult.Success -> {
+                    val newPosts = result.data.posts ?: emptyList()
+                    _uiState.update {
+                        it.copy(
+                            mediaPosts = it.mediaPosts + newPosts,
+                            isLoadingMedia = false,
+                            hasMoreMedia = result.data.hasMore,
+                            mediaPage = it.mediaPage + 1
+                        )
+                    }
+                }
+                else -> _uiState.update { it.copy(isLoadingMedia = false) }
+            }
+        }
+    }
+
+    fun loadMoreMediaIfNeeded(lastVisibleIndex: Int) {
+        val state = _uiState.value
+        if (lastVisibleIndex >= state.mediaPosts.size - 9 && state.hasMoreMedia && !state.isLoadingMedia) {
+            loadMediaPosts()
         }
     }
 
@@ -84,10 +118,20 @@ class ExploreViewModel @Inject constructor(
                 isLiked = !post.isLiked,
                 likeCount = if (post.isLiked) post.likeCount - 1 else post.likeCount + 1
             )
-            _uiState.update { it.copy(postResults = it.postResults.map { p -> if (p.id == post.id) updated else p }) }
+            _uiState.update {
+                it.copy(
+                    postResults = it.postResults.map { p -> if (p.id == post.id) updated else p },
+                    mediaPosts = it.mediaPosts.map { p -> if (p.id == post.id) updated else p }
+                )
+            }
             val result = postRepository.toggleLike(post.id, post.isLiked)
             if (result is NetworkResult.Error) {
-                _uiState.update { it.copy(postResults = it.postResults.map { p -> if (p.id == post.id) post else p }) }
+                _uiState.update {
+                    it.copy(
+                        postResults = it.postResults.map { p -> if (p.id == post.id) post else p },
+                        mediaPosts = it.mediaPosts.map { p -> if (p.id == post.id) post else p }
+                    )
+                }
             }
         }
     }

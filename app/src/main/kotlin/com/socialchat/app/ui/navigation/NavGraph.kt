@@ -17,6 +17,7 @@ import com.socialchat.app.ui.createpost.CreatePostScreen
 import com.socialchat.app.ui.dm.DmConversationCache
 import com.socialchat.app.ui.dm.DmConversationScreen
 import com.socialchat.app.ui.explore.ExploreScreen
+import com.socialchat.app.ui.explore.MediaReelScreen
 import com.socialchat.app.ui.friends.FriendRequestsScreen
 import com.socialchat.app.ui.home.HomeScreen
 import com.socialchat.app.ui.profile.EditProfileScreen
@@ -75,6 +76,22 @@ fun AppNavGraph() {
             }
             composable(Screen.Explore.route) {
                 ExploreScreen(
+                    onNavigateToProfile = { username ->
+                        navController.navigate(Screen.UserProfile.createRoute(username))
+                    },
+                    onNavigateToReel = { startIndex ->
+                        navController.navigate(Screen.MediaReel.createRoute(startIndex))
+                    }
+                )
+            }
+            composable(
+                route = Screen.MediaReel.route,
+                arguments = listOf(navArgument("startIndex") { type = NavType.IntType })
+            ) { backStackEntry ->
+                val startIndex = backStackEntry.arguments?.getInt("startIndex") ?: 0
+                MediaReelScreen(
+                    startIndex = startIndex,
+                    onBack = { navController.popBackStack() },
                     onNavigateToProfile = { username ->
                         navController.navigate(Screen.UserProfile.createRoute(username))
                     }
