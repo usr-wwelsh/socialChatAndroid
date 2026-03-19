@@ -2,6 +2,7 @@ package com.socialchat.app.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.socialchat.app.core.crypto.CryptoManager
 import com.socialchat.app.core.network.NetworkResult
 import com.socialchat.app.core.network.RetrofitProvider
 import com.socialchat.app.core.network.SessionCookieJar
@@ -30,7 +31,8 @@ class AuthViewModel @Inject constructor(
     private val prefs: UserPreferences,
     private val socketManager: SocketManager,
     private val retrofitProvider: RetrofitProvider,
-    private val cookieJar: SessionCookieJar
+    private val cookieJar: SessionCookieJar,
+    private val cryptoManager: CryptoManager
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow(AuthState())
@@ -51,7 +53,10 @@ class AuthViewModel @Inject constructor(
             when (val result = repository.checkSession()) {
                 is NetworkResult.Success -> {
                     val authenticated = result.data.authenticated
-                    if (authenticated) socketManager.connect()
+                    if (authenticated) {
+                        socketManager.connect()
+                        result.data.user?.id?.let { prefs.saveUserId(it) }
+                    }
                     _authState.value = _authState.value.copy(
                         isAuthenticated = authenticated,
                         isLoading = false,
@@ -108,12 +113,14 @@ class AuthViewModel @Inject constructor(
             when (val result = repository.login(username, password)) {
                 is NetworkResult.Success -> {
                     prefs.saveCachedUsername(result.data.username)
+                    prefs.saveUserId(result.data.id)
                     socketManager.connect()
                     _authState.value = _authState.value.copy(
                         isAuthenticated = true,
                         isLoading = false,
                         username = result.data.username
                     )
+                    cryptoManager.initializeKeys(password, result.data.id)
                 }
                 is NetworkResult.Error -> {
                     _authState.value = _authState.value.copy(
@@ -132,12 +139,14 @@ class AuthViewModel @Inject constructor(
             when (val result = repository.register(username, password)) {
                 is NetworkResult.Success -> {
                     prefs.saveCachedUsername(result.data.username)
+                    prefs.saveUserId(result.data.id)
                     socketManager.connect()
                     _authState.value = _authState.value.copy(
                         isAuthenticated = true,
                         isLoading = false,
                         username = result.data.username
                     )
+                    cryptoManager.initializeKeys(password, result.data.id)
                 }
                 is NetworkResult.Error -> {
                     _authState.value = _authState.value.copy(
@@ -154,6 +163,7 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             repository.logout()
             socketManager.disconnect()
+            cryptoManager.clearSession()
             prefs.clearSession()
             _authState.value = _authState.value.copy(isAuthenticated = false, isLoading = false)
         }

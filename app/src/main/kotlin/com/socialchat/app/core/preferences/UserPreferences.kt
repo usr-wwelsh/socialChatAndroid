@@ -24,6 +24,8 @@ class UserPreferences @Inject constructor(
         private val SESSION_COOKIE_KEY = stringPreferencesKey("session_cookie")
         private val CACHED_USERNAME_KEY = stringPreferencesKey("cached_username")
         private val SERVER_LIST_KEY = stringPreferencesKey("server_list")
+        private val PRIVATE_KEY_JWK_KEY = stringPreferencesKey("private_key_jwk")
+        private val USER_ID_KEY = stringPreferencesKey("user_id")
         val DEFAULT_BASE_URL = "https://chat.wwel.sh"
     }
 
@@ -93,10 +95,26 @@ class UserPreferences @Inject constructor(
         }
     }
 
+    suspend fun savePrivateKeyJwk(jwk: String) {
+        context.dataStore.edit { it[PRIVATE_KEY_JWK_KEY] = jwk }
+    }
+
+    suspend fun getPrivateKeyJwk(): String? =
+        context.dataStore.data.first()[PRIVATE_KEY_JWK_KEY]
+
+    suspend fun saveUserId(userId: Int) {
+        context.dataStore.edit { it[USER_ID_KEY] = userId.toString() }
+    }
+
+    suspend fun getUserId(): Int? =
+        context.dataStore.data.first()[USER_ID_KEY]?.toIntOrNull()
+
     suspend fun clearSession() {
         context.dataStore.edit {
             it.remove(SESSION_COOKIE_KEY)
             it.remove(CACHED_USERNAME_KEY)
+            it.remove(PRIVATE_KEY_JWK_KEY)
+            it.remove(USER_ID_KEY)
         }
     }
 

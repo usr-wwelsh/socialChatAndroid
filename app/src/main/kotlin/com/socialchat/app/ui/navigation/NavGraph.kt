@@ -14,6 +14,8 @@ import com.socialchat.app.ui.auth.RegisterScreen
 import com.socialchat.app.ui.chat.ChatListScreen
 import com.socialchat.app.ui.chat.ChatRoomScreen
 import com.socialchat.app.ui.createpost.CreatePostScreen
+import com.socialchat.app.ui.dm.DmConversationCache
+import com.socialchat.app.ui.dm.DmConversationScreen
 import com.socialchat.app.ui.explore.ExploreScreen
 import com.socialchat.app.ui.friends.FriendRequestsScreen
 import com.socialchat.app.ui.home.HomeScreen
@@ -87,7 +89,21 @@ fun AppNavGraph() {
                 ChatListScreen(
                     onNavigateToRoom = { roomId ->
                         navController.navigate(Screen.ChatRoom.createRoute(roomId))
+                    },
+                    onNavigateToDm = { conversation ->
+                        DmConversationCache.current = conversation
+                        navController.navigate(Screen.DmConversation.createRoute(conversation.id))
                     }
+                )
+            }
+            composable(
+                route = Screen.DmConversation.route,
+                arguments = listOf(navArgument("conversationId") { type = NavType.IntType })
+            ) {
+                val conversation = DmConversationCache.current ?: return@composable
+                DmConversationScreen(
+                    conversation = conversation,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable(

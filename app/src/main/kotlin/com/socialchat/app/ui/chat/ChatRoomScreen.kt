@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -65,7 +66,17 @@ fun ChatRoomScreen(
             IconButton(onClick = onBack) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
             }
-            Text("Chat Room", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
+            Icon(
+                imageVector = Icons.Default.Forum,
+                contentDescription = "Group chat",
+                tint = TextSecondary,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Column {
+                Text("Group Chat", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
+                Text("Public", color = TextSecondary, style = MaterialTheme.typography.labelSmall)
+            }
         }
 
         // Messages

@@ -3,6 +3,7 @@ package com.socialchat.app.core.di
 import com.socialchat.app.core.network.RetrofitProvider
 import com.socialchat.app.core.network.SessionCookieJar
 import com.socialchat.app.core.preferences.UserPreferences
+import com.socialchat.app.core.crypto.CryptoManager
 import com.socialchat.app.data.api.*
 import dagger.Module
 import dagger.Provides
@@ -54,5 +55,19 @@ object NetworkModule {
     fun provideTagApiService(provider: RetrofitProvider, prefs: UserPreferences): TagApiService {
         val url = runBlocking { prefs.baseUrl.first() }
         return provider.getRetrofit(url).create(TagApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideKeysApiService(provider: RetrofitProvider, prefs: UserPreferences): KeysApiService {
+        val url = runBlocking { prefs.baseUrl.first() }
+        return provider.getRetrofit(url).create(KeysApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDmApiService(provider: RetrofitProvider, prefs: UserPreferences): DmApiService {
+        val url = runBlocking { prefs.baseUrl.first() }
+        return provider.getRetrofit(url).create(DmApiService::class.java)
     }
 }

@@ -4,6 +4,7 @@ import android.util.Log
 import com.google.gson.Gson
 import com.socialchat.app.core.preferences.UserPreferences
 import com.socialchat.app.data.model.ChatMessage
+import com.socialchat.app.data.model.DmMessage
 import io.socket.client.IO
 import io.socket.client.Socket
 import io.socket.engineio.client.transports.WebSocket
@@ -38,6 +39,14 @@ class SocketManager @Inject constructor(
 
     private val _connectionState = MutableSharedFlow<Boolean>(replay = 1, extraBufferCapacity = 1)
     val connectionState: Flow<Boolean> = _connectionState.asSharedFlow()
+
+    // Raw DM message events — content is still encrypted; DmRepository decrypts
+    private val _newDmMessages = MutableSharedFlow<DmMessage>(replay = 0, extraBufferCapacity = 64)
+    val newDmMessages: Flow<DmMessage> = _newDmMessages.asSharedFlow()
+
+    // Notification that a DM arrived (for badge updates) — pair of (conversationId, senderUsername)
+    private val _dmNotifications = MutableSharedFlow<Pair<Int, String>>(replay = 0, extraBufferCapacity = 32)
+    val dmNotifications: Flow<Pair<Int, String>> = _dmNotifications.asSharedFlow()
 
     fun connect() {
         if (socket?.connected() == true) return
@@ -93,6 +102,32 @@ class SocketManager @Inject constructor(
                 _stopTypingEvents.tryEmit(Pair(currentRoomId, username))
             } catch (_: Exception) {}
         }
+        socket?.on(SocketEvents.NEW_DM) { args ->
+            try {
+                val json = args[0] as? JSONObject ?: return@on
+                val msg = DmMessage(
+                    id = json.optInt("id"),
+                    conversationId = json.optInt("conversation_id"),
+                    senderId = json.optInt("sender_id"),
+                    senderUsername = json.optString("sender_username"),
+                    senderAvatar = if (json.has("sender_avatar") && !json.isNull("sender_avatar")) json.getString("sender_avatar") else null,
+                    ciphertext = json.optString("ciphertext"),
+                    iv = json.optString("iv"),
+                    createdAt = if (json.has("created_at") && !json.isNull("created_at")) json.getString("created_at") else null
+                )
+                _newDmMessages.tryEmit(msg)
+            } catch (e: Exception) {
+                Log.e(tag, "Error parsing new_dm event", e)
+            }
+        }
+        socket?.on(SocketEvents.DM_NOTIFICATION) { args ->
+            try {
+                val json = args[0] as? JSONObject ?: return@on
+                val conversationId = json.optInt("conversationId")
+                val senderUsername = json.optString("senderUsername")
+                _dmNotifications.tryEmit(Pair(conversationId, senderUsername))
+            } catch (_: Exception) {}
+        }
     }
 
     fun joinRoom(roomId: Int) {
@@ -119,6 +154,15 @@ class SocketManager @Inject constructor(
 
     fun sendStopTyping(roomId: Int) {
         socket?.emit(SocketEvents.STOP_TYPING, JSONObject().apply { put("chatroomId", roomId) })
+    }
+
+    fun joinDmConversation(conversationId: Int) {
+        // Server expects bare integer, just like join_chatroom
+        socket?.emit(SocketEvents.JOIN_DM, conversationId)
+    }
+
+    fun leaveDmConversation(conversationId: Int) {
+        socket?.emit(SocketEvents.LEAVE_DM, conversationId)
     }
 
     fun disconnect() {

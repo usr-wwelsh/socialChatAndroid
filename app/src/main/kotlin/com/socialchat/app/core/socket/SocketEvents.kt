@@ -11,4 +11,9 @@ object SocketEvents {
     const val STOP_TYPING = "stop_typing"
     const val USER_TYPING = "user_typing"
     const val USER_STOP_TYPING = "user_stop_typing"
+    // DM events
+    const val JOIN_DM = "join_dm"
+    const val LEAVE_DM = "leave_dm"
+    const val NEW_DM = "new_dm"
+    const val DM_NOTIFICATION = "dm_notification"
 }
