@@ -77,10 +77,10 @@ fun CreatePostScreen(
         )
 
         // Media picker
-        if (uiState.mediaData != null && uiState.mediaType?.startsWith("image") == true) {
+        if (uiState.mediaUri != null && uiState.mediaType?.startsWith("image") == true) {
             Box {
                 AsyncImage(
-                    model = uiState.mediaData,
+                    model = uiState.mediaUri,
                     contentDescription = "Selected media",
                     contentScale = ContentScale.FillWidth,
                     modifier = Modifier
@@ -188,7 +188,7 @@ fun CreatePostScreen(
 
         BrutalistButton(
             text = "POST",
-            onClick = { viewModel.submitPost() },
+            onClick = { viewModel.submitPost(context) },
             isLoading = uiState.isLoading,
             enabled = uiState.content.isNotBlank(),
             modifier = Modifier.fillMaxWidth()

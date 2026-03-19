@@ -2,7 +2,6 @@ package com.socialchat.app.ui.createpost
 
 import android.content.Context
 import android.net.Uri
-import android.util.Base64
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.socialchat.app.core.network.NetworkResult
@@ -18,13 +17,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 
 data class CreatePostUiState(
     val content: String = "",
     val mediaUri: Uri? = null,
     val mediaType: String? = null,
-    val mediaData: String? = null,
     val visibility: String = "public",
     val tagInput: String = "",
     val tags: List<String> = emptyList(),
@@ -58,38 +59,53 @@ class CreatePostViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-                val bytes = context.contentResolver.openInputStream(uri)?.readBytes() ?: return@launch
-                if (bytes.size > 10 * 1024 * 1024) {
+                val size = context.contentResolver.openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+                if (size > 10 * 1024 * 1024) {
                     _uiState.update { it.copy(error = "File too large (max 10MB)") }
                     return@launch
                 }
-                val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-                val dataUri = "data:$mimeType;base64,$base64"
-                // Backend expects "image", "video", or "audio" — not the full MIME type
                 val mediaCategory = mimeType.substringBefore("/")
-                _uiState.update { it.copy(mediaUri = uri, mediaType = mediaCategory, mediaData = dataUri) }
+                _uiState.update { it.copy(mediaUri = uri, mediaType = mediaCategory) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Failed to load media: ${e.message}") }
             }
         }
     }
 
-    fun clearMedia() = _uiState.update { it.copy(mediaUri = null, mediaType = null, mediaData = null) }
+    fun clearMedia() = _uiState.update { it.copy(mediaUri = null, mediaType = null) }
 
-    fun submitPost() {
+    fun submitPost(context: Context) {
         val state = _uiState.value
         if (state.content.isBlank()) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
+
+            val mediaPart = if (state.mediaUri != null && state.mediaType != null) {
+                try {
+                    val bytes = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(state.mediaUri)?.readBytes()
+                    }
+                    if (bytes == null) {
+                        _uiState.update { it.copy(isLoading = false, error = "Failed to read media file") }
+                        return@launch
+                    }
+                    val mimeType = context.contentResolver.getType(state.mediaUri) ?: "application/octet-stream"
+                    val ext = mimeType.substringAfter("/").substringBefore(";")
+                    MultipartBody.Part.createFormData("media", "upload.$ext", bytes.toRequestBody(mimeType.toMediaTypeOrNull()))
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(isLoading = false, error = "Failed to attach media") }
+                    return@launch
+                }
+            } else null
+
             val request = CreatePostRequest(
                 content = state.content,
                 mediaType = state.mediaType,
-                mediaData = state.mediaData,
                 visibility = state.visibility,
                 tags = state.tags
             )
-            when (val result = postRepository.createPost(request)) {
+            when (val result = postRepository.createPost(request, mediaPart)) {
                 is NetworkResult.Success -> _uiState.update { it.copy(isLoading = false, posted = true) }
                 is NetworkResult.Error -> _uiState.update { it.copy(isLoading = false, error = result.message) }
                 else -> {}

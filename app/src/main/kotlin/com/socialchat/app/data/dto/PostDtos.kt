@@ -7,7 +7,6 @@ import com.socialchat.app.data.model.Post
 data class CreatePostRequest(
     val content: String,
     @SerializedName("media_type") val mediaType: String? = null,
-    @SerializedName("media_data") val mediaData: String? = null,
     val visibility: String = "public",
     val tags: List<String> = emptyList()
 )

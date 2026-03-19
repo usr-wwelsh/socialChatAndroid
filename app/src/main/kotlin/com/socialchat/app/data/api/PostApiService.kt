@@ -9,6 +9,8 @@ import com.socialchat.app.data.dto.EditPostRequest
 import com.socialchat.app.data.dto.FeedResponse
 import com.socialchat.app.data.dto.MediaResponse
 import com.socialchat.app.data.model.Post
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -27,6 +29,16 @@ interface PostApiService {
 
     @POST("api/posts")
     suspend fun createPost(@Body request: CreatePostRequest): Response<Post>
+
+    @Multipart
+    @POST("api/posts")
+    suspend fun createPostWithMedia(
+        @Part("content") content: RequestBody,
+        @Part("media_type") mediaType: RequestBody,
+        @Part("visibility") visibility: RequestBody,
+        @Part("tags") tags: RequestBody,
+        @Part media: MultipartBody.Part
+    ): Response<Post>
 
     @PUT("api/posts/{id}")
     suspend fun editPost(@Path("id") id: Int, @Body request: EditPostRequest): Response<Post>

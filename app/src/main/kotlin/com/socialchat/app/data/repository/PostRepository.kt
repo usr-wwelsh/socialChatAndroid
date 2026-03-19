@@ -4,9 +4,13 @@ import android.util.Log
 import com.socialchat.app.core.network.NetworkResult
 import com.socialchat.app.core.network.safeApiCall
 import com.socialchat.app.data.api.PostApiService
+import com.google.gson.Gson
 import com.socialchat.app.data.dto.CreateCommentRequest
 import com.socialchat.app.data.dto.CreatePostRequest
 import com.socialchat.app.data.dto.ReactRequest
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import com.socialchat.app.data.dto.FeedResponse
 import com.socialchat.app.data.dto.MediaResponse
 import com.socialchat.app.data.model.Comment
@@ -66,9 +70,20 @@ class PostRepository @Inject constructor(
             resp.body()!!
         }
 
-    suspend fun createPost(request: CreatePostRequest): NetworkResult<Post> =
+    suspend fun createPost(request: CreatePostRequest, mediaPart: MultipartBody.Part? = null): NetworkResult<Post> =
         safeApiCall {
-            val resp = api.createPost(request)
+            val resp = if (mediaPart != null) {
+                val plain = "text/plain".toMediaType()
+                api.createPostWithMedia(
+                    content = request.content.toRequestBody(plain),
+                    mediaType = (request.mediaType ?: "").toRequestBody(plain),
+                    visibility = request.visibility.toRequestBody(plain),
+                    tags = Gson().toJson(request.tags).toRequestBody(plain),
+                    media = mediaPart
+                )
+            } else {
+                api.createPost(request)
+            }
             if (!resp.isSuccessful) throw retrofit2.HttpException(resp)
             resp.body()!!
         }
