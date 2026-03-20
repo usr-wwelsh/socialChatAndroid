@@ -27,6 +27,7 @@ data class ExploreUiState(
     val error: String? = null,
     val mediaPosts: List<Post> = emptyList(),
     val isLoadingMedia: Boolean = false,
+    val isRefreshing: Boolean = false,
     val hasMoreMedia: Boolean = true,
     val mediaPage: Int = 1
 )
@@ -75,6 +76,15 @@ class ExploreViewModel @Inject constructor(
                 }
                 else -> _uiState.update { it.copy(isLoadingMedia = false) }
             }
+        }
+    }
+
+    fun refresh() {
+        _uiState.update { it.copy(mediaPosts = emptyList(), mediaPage = 1, hasMoreMedia = true, isRefreshing = true) }
+        viewModelScope.launch {
+            loadTrendingTags()
+            loadMediaPosts()
+            _uiState.update { it.copy(isRefreshing = false) }
         }
     }
 

@@ -26,12 +26,6 @@ class CryptoManager @Inject constructor(
      */
     suspend fun initializeKeys(password: String, userId: Int) {
         try {
-            val cached = prefs.getPrivateKeyJwk()
-            if (!cached.isNullOrEmpty()) {
-                Log.d(tag, "Private key already in DataStore, skipping init")
-                return
-            }
-
             Log.d(tag, "Fetching encrypted private key from server for userId=$userId")
             val resp = keysApi.getMyKeys()
             Log.d(tag, "getMyKeys response: ${resp.code()}")
@@ -40,7 +34,8 @@ class CryptoManager @Inject constructor(
                 val hasServerKey = !body?.encryptedPrivateKey.isNullOrEmpty()
                 Log.d(tag, "encryptedPrivateKey present: $hasServerKey, keyIv: ${body?.keyIv?.take(8)}, keySalt: ${body?.keySalt?.take(8)}")
                 if (hasServerKey) {
-                    // Server has a key — MUST decrypt it. Never replace with a new key.
+                    // Server has a key — MUST decrypt it. Always sync from server on login
+                    // to stay consistent after DB restores or migrations.
                     val blob = E2ECrypto.EncryptedKeyBlob(
                         encryptedData = body!!.encryptedPrivateKey!!,
                         iv = body.keyIv ?: "",

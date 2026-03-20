@@ -14,6 +14,8 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +29,7 @@ import com.socialchat.app.core.util.LocalBaseUrl
 import com.socialchat.app.ui.components.*
 import com.socialchat.app.ui.theme.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
     onNavigateToProfile: (String) -> Unit,
@@ -70,6 +73,11 @@ fun ExploreScreen(
                 Spacer(Modifier.height(12.dp))
             }
 
+            PullToRefreshBox(
+                isRefreshing = uiState.isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                modifier = Modifier.fillMaxSize()
+            ) {
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
                 modifier = Modifier.fillMaxSize(),
@@ -135,6 +143,7 @@ fun ExploreScreen(
                     }
                 }
             }
+            } // end PullToRefreshBox
         } else {
             // Search results
             uiState.error?.let { ErrorBanner(it) }
